@@ -1,0 +1,88 @@
+blueprint:
+  name: Zendure - Mode Jour
+  description: >
+    Active le mode smart à l'heure définie et abaisse le SOC minimum sur tous
+    les SolarFlow pour permettre la décharge matinale puis le stockage du
+    surplus solaire en journée.
+  domain: automation
+  input:
+    zendure_manager:
+      name: Zendure Manager
+      description: Entité de contrôle du Zendure Manager
+      selector:
+        entity:
+          domain:
+            - select
+    soc_min_targets:
+      name: SOC minimum SolarFlow
+      description: Entités SOC minimum de tous vos SolarFlow
+      selector:
+        target:
+          entity:
+            domain: number
+    operation_mode:
+      name: Mode de fonctionnement
+      description: Mode à activer pendant la journée
+      default: smart
+      selector:
+        select:
+          options:
+            - label: Couplage intelligent (Smart)
+              value: smart
+            - label: Charge intelligente
+              value: smart_charging
+            - label: Décharge intelligente
+              value: smart_discharging
+            - label: Puissance manuelle
+              value: manual
+    start_time:
+      name: Heure de début
+      description: Heure de passage en mode jour
+      default: "06:00:00"
+      selector:
+        time: {}
+    end_time:
+      name: Heure de fin
+      description: Heure de fin du mode jour (pour la condition au redémarrage HA)
+      default: "23:30:00"
+      selector:
+        time: {}
+    soc_min_jour:
+      name: SOC minimum journée (%)
+      description: SOC plancher pendant la journée (protection batterie)
+      default: 10
+      selector:
+        number:
+          min: 5.0
+          max: 30.0
+          unit_of_measurement: "%"
+          step: 1.0
+          mode: slider
+triggers:
+  - platform: time
+    at: !input start_time
+  - platform: homeassistant
+    event: start
+conditions:
+  - condition: time
+    after: !input start_time
+    before: !input end_time
+actions:
+  - action: number.set_value
+    target: !input soc_min_targets
+    data:
+      value: !input soc_min_jour
+  - action: select.select_option
+    target:
+      entity_id: !input zendure_manager
+    data:
+      option: !input operation_mode
+  - action: logbook.log
+    data:
+      name: Zendure Mode Jour
+      message: >
+        Mode {{ operation_mode }} activé, SOC min {{ soc_min_jour }}%
+variables:
+  operation_mode: !input operation_mode
+  soc_min_jour: !input soc_min_jour
+mode: single

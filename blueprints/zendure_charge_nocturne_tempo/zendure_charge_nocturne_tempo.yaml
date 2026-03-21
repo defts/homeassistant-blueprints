@@ -1,0 +1,102 @@
+blueprint:
+  name: Zendure - Charge Nocturne Tempo
+  description: >
+    Charge les batteries Zendure en heures creuses si la couleur Tempo du
+    lendemain est dans la liste autorisée. Passe le manager en off, configure
+    la puissance de charge max et le mode AC input sur tous les SolarFlow.
+  domain: automation
+  input:
+    tempo_sensor:
+      name: Capteur Tempo
+      description: Capteur RTE Tempo pour la prochaine couleur
+      selector:
+        entity:
+          domain:
+            - sensor
+    tempo_colors:
+      name: Couleurs Tempo autorisées
+      description: Sélectionner les couleurs de jours où la charge est autorisée
+      default:
+        - Blanc
+        - Rouge
+      selector:
+        select:
+          multiple: true
+          options:
+            - Bleu
+            - Blanc
+            - Rouge
+    zendure_manager:
+      name: Zendure Manager
+      description: Entité de contrôle du Zendure Manager
+      selector:
+        entity:
+          domain:
+            - select
+    input_limit_targets:
+      name: Limite d'entrée SolarFlow
+      description: Entités de puissance de charge de tous vos SolarFlow
+      selector:
+        target:
+          entity:
+            domain: number
+    ac_mode_targets:
+      name: Mode AC SolarFlow
+      description: Entités de mode AC de tous vos SolarFlow
+      selector:
+        target:
+          entity:
+            domain: select
+    charge_time:
+      name: Heure de déclenchement
+      description: Heure à laquelle la charge débute
+      default: "22:00:00"
+      selector:
+        time: {}
+    charge_power:
+      name: Puissance de charge (W)
+      description: Puissance de charge appliquée à chaque SolarFlow
+      default: 2400
+      selector:
+        number:
+          min: 100.0
+          max: 2400.0
+          unit_of_measurement: W
+          step: 100.0
+          mode: slider
+triggers:
+  - platform: time
+    at: !input charge_time
+  - platform: homeassistant
+    event: start
+conditions:
+  - condition: time
+    after: !input charge_time
+    before: "06:00:00"
+  - condition: state
+    entity_id: !input tempo_sensor
+    state: !input tempo_colors
+actions:
+  - action: select.select_option
+    target:
+      entity_id: !input zendure_manager
+    data:
+      option: "off"
+  - action: number.set_value
+    target: !input input_limit_targets
+    data:
+      value: !input charge_power
+  - action: select.select_option
+    target: !input ac_mode_targets
+    data:
+      option: input
+  - action: logbook.log
+    data:
+      name: Zendure Charge Nocturne
+      message: >
+        Charge lancée à {{ charge_power }}W
+        (Tempo demain: {{ states(tempo_sensor) }})
+variables:
+  tempo_sensor: !input tempo_sensor
+  charge_power: !input charge_power
+mode: single

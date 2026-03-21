@@ -1,0 +1,124 @@
+blueprint:
+  name: Zendure - SOC Réserve Soir
+  description: >
+    Au coucher du soleil, calcule le SOC minimum à conserver pour couvrir
+    la consommation du lendemain matin (6h → production solaire effective).
+    S'adapte automatiquement aux saisons via sun.sun et à la capacité
+    réelle des batteries via le capteur Zendure Manager.
+  domain: automation
+  input:
+    soc_min_targets:
+      name: SOC minimum SolarFlow
+      description: Sélectionner les entités SOC minimum de tous vos SolarFlow
+      selector:
+        target:
+          entity:
+            domain: number
+    total_capacity_sensor:
+      name: Capacité totale batteries
+      description: "Capteur de la capacité cumulée (en kWh), ex : sensor.zendure_manager_total_kwh"
+      selector:
+        entity:
+          domain:
+            - sensor
+    avg_consumption:
+      name: Consommation moyenne matin (W)
+      description: >
+        Consommation estimée entre 6h et l'arrivée du soleil.
+        Compte le talon + petit-déjeuner, réveil, etc.
+      default: 500
+      selector:
+        number:
+          min: 100.0
+          max: 2000.0
+          unit_of_measurement: W
+          step: 50.0
+          mode: slider
+    morning_start_hour:
+      name: Début heures pleines matin
+      description: Heure à partir de laquelle on couvre avec la batterie
+      default: 6
+      selector:
+        number:
+          min: 4.0
+          max: 8.0
+          step: 1.0
+          mode: slider
+    solar_offset_minutes:
+      name: Décalage production solaire (min)
+      description: >
+        Minutes après le lever du soleil avant que la production couvre
+        ta consommation (orientation panneaux, ombres, etc.)
+      default: 60
+      selector:
+        number:
+          min: 0.0
+          max: 120.0
+          step: 15.0
+          mode: slider
+    min_soc_floor:
+      name: SOC plancher (%)
+      description: Ne jamais descendre en dessous (protection batterie)
+      default: 10
+      selector:
+        number:
+          min: 5.0
+          max: 30.0
+          unit_of_measurement: "%"
+          step: 1.0
+          mode: slider
+    max_soc_reserve:
+      name: SOC réserve maximum (%)
+      description: Plafond de la réserve même en plein hiver
+      default: 45
+      selector:
+        number:
+          min: 20.0
+          max: 80.0
+          unit_of_measurement: "%"
+          step: 5.0
+          mode: slider
+triggers:
+  - platform: sun
+    event: sunset
+  - platform: homeassistant
+    event: start
+conditions:
+  - condition: sun
+    after: sunset
+variables:
+  consumption: !input avg_consumption
+  capacity_sensor: !input total_capacity_sensor
+  morning_hour: !input morning_start_hour
+  solar_offset: !input solar_offset_minutes
+  floor_soc: !input min_soc_floor
+  ceiling_soc: !input max_soc_reserve
+actions:
+  - variables:
+      sunrise_raw: >
+        {{ state_attr('sun.sun', 'next_rising') }}
+      calculated_soc: >
+        {% if sunrise_raw is none %}
+          {{ floor_soc }}
+        {% else %}
+          {% set sunrise = sunrise_raw | as_datetime | as_local %}
+          {% set effective_sunrise = sunrise + timedelta(minutes=solar_offset) %}
+          {% set morning = (now() + timedelta(days=1)).replace(hour=morning_hour | int, minute=0, second=0, microsecond=0) %}
+          {% set hours = ((effective_sunrise - morning).total_seconds() / 3600) %}
+          {% set hours = [hours, 0] | max %}
+          {% set capacity = states(capacity_sensor) | float(4.8) * 1000 %}
+          {% set soc = (hours * consumption / capacity * 100) | round(0) %}
+          {{ [[soc, floor_soc] | max, ceiling_soc] | min }}
+        {% endif %}
+  - action: number.set_value
+    target: !input soc_min_targets
+    data:
+      value: "{{ calculated_soc }}"
+  - action: logbook.log
+    data:
+      name: Zendure SOC Réserve
+      message: >
+        SOC réserve calculé à {{ calculated_soc }}%
+        (capacité: {{ states(capacity_sensor) }} kWh,
+        sunrise demain: {{ sunrise_raw | as_datetime | as_local | as_timestamp | timestamp_custom('%H:%M') if sunrise_raw else 'inconnu' }})
+mode: single
