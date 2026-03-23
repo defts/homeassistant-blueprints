@@ -3,7 +3,8 @@ blueprint:
   description: >
     Charge les batteries Zendure en heures creuses si la couleur Tempo du
     lendemain est dans la liste autorisée. Passe le manager en off, configure
-    la puissance de charge max et le mode AC input sur tous les SolarFlow.
+    la puissance de charge par SolarFlow (% de sa limite max) et le mode AC input.
+    Supporte N SolarFlow automatiquement.
   domain: automation
   input:
     tempo_sensor:
@@ -33,13 +34,28 @@ blueprint:
         entity:
           domain:
             - select
-    input_limit_targets:
-      name: Limite d'entrée SolarFlow
-      description: Entités de puissance de charge de tous vos SolarFlow
+    input_limit_entities:
+      name: Limites d'entrée SolarFlow
+      description: >
+        Entités input_limit de tous vos SolarFlow.
+        La puissance max de chaque SolarFlow est lue automatiquement.
       selector:
-        target:
-          entity:
-            domain: number
+        entity:
+          domain: number
+          multiple: true
+    charge_percent:
+      name: Puissance de charge (% du max)
+      description: >
+        Pourcentage de la puissance max de chaque SolarFlow.
+        100% = charge la plus rapide possible.
+      default: 100
+      selector:
+        number:
+          min: 10.0
+          max: 100.0
+          unit_of_measurement: "%"
+          step: 5.0
+          mode: slider
     ac_mode_targets:
       name: Mode AC SolarFlow
       description: Entités de mode AC de tous vos SolarFlow
@@ -53,17 +69,6 @@ blueprint:
       default: "22:00:00"
       selector:
         time: {}
-    charge_power:
-      name: Puissance de charge (W)
-      description: Puissance de charge appliquée à chaque SolarFlow
-      default: 2400
-      selector:
-        number:
-          min: 100.0
-          max: 2400.0
-          unit_of_measurement: W
-          step: 100.0
-          mode: slider
 triggers:
   - platform: time
     at: !input charge_time
@@ -82,10 +87,16 @@ actions:
       entity_id: !input zendure_manager
     data:
       option: "off"
-  - action: number.set_value
-    target: !input input_limit_targets
-    data:
-      value: !input charge_power
+  - repeat:
+      for_each: "{{ entities }}"
+      sequence:
+        - action: number.set_value
+          target:
+            entity_id: "{{ repeat.item }}"
+          data:
+            value: "{{ (state_attr(repeat.item, 'max') | float(800) * pct / 100) | round(0) }}"
+        - delay:
+            seconds: 2
   - action: select.select_option
     target: !input ac_mode_targets
     data:
@@ -94,9 +105,10 @@ actions:
     data:
       name: Zendure Charge Nocturne
       message: >
-        Charge lancée à {{ charge_power }}W
+        Charge lancée à {{ pct }}% du max par SolarFlow
         (Tempo demain: {{ states(tempo_sensor) }})
 variables:
   tempo_sensor: !input tempo_sensor
-  charge_power: !input charge_power
+  entities: !input input_limit_entities
+  pct: !input charge_percent
 mode: single
