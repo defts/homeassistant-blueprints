@@ -3,7 +3,7 @@ blueprint:
   description: >
     Active le mode smart à l'heure définie et abaisse le SOC minimum sur tous
     les SolarFlow pour permettre la décharge matinale puis le stockage du
-    surplus solaire en journée.
+    surplus solaire en journée. À l'heure de fin, passe le manager en arrêt.
   domain: automation
   input:
     zendure_manager:
@@ -43,8 +43,8 @@ blueprint:
         time: {}
     end_time:
       name: Heure de fin
-      description: Heure de fin du mode jour (pour la condition au redémarrage HA)
-      default: "23:30:00"
+      description: Heure de fin du mode jour (passage en arrêt)
+      default: "22:00:00"
       selector:
         time: {}
     soc_min_jour:
@@ -58,31 +58,77 @@ blueprint:
           unit_of_measurement: "%"
           step: 1.0
           mode: slider
+
 triggers:
-  - platform: time
+  - id: "start"
+    platform: time
     at: !input start_time
-  - platform: homeassistant
+  - id: "stop"
+    platform: time
+    at: !input end_time
+  - id: "ha_restart"
+    platform: homeassistant
     event: start
-conditions:
-  - condition: time
-    after: !input start_time
-    before: !input end_time
+
+conditions: []
+
 actions:
-  - action: number.set_value
-    target: !input soc_min_targets
-    data:
-      value: !input soc_min_jour
-  - action: select.select_option
-    target:
-      entity_id: !input zendure_manager
-    data:
-      option: !input operation_mode
-  - action: logbook.log
-    data:
-      name: Zendure Mode Jour
-      message: >
-        Mode {{ operation_mode }} activé, SOC min {{ soc_min_jour }}%
-variables:
-  operation_mode: !input operation_mode
-  soc_min_jour: !input soc_min_jour
+  - variables:
+      operation_mode: !input operation_mode
+      soc_min_jour: !input soc_min_jour
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: "stop"
+        sequence:
+          - action: select.select_option
+            target:
+              entity_id: !input zendure_manager
+            data:
+              option: "off"
+          - action: logbook.log
+            data:
+              name: Zendure Mode Jour
+              message: "Mode arrêt activé (fin de journée)"
+      - conditions:
+          - condition: trigger
+            id: "start"
+        sequence:
+          - action: number.set_value
+            target: !input soc_min_targets
+            data:
+              value: !input soc_min_jour
+          - action: select.select_option
+            target:
+              entity_id: !input zendure_manager
+            data:
+              option: !input operation_mode
+          - action: logbook.log
+            data:
+              name: Zendure Mode Jour
+              message: >
+                Mode {{ operation_mode }} activé, SOC min {{ soc_min_jour }}%
+      - conditions:
+          - condition: trigger
+            id: "ha_restart"
+          - condition: time
+            after: !input start_time
+            before: !input end_time
+        sequence:
+          - action: number.set_value
+            target: !input soc_min_targets
+            data:
+              value: !input soc_min_jour
+          - action: select.select_option
+            target:
+              entity_id: !input zendure_manager
+            data:
+              option: !input operation_mode
+          - action: logbook.log
+            data:
+              name: Zendure Mode Jour
+              message: >
+                Mode {{ operation_mode }} activé, SOC min {{ soc_min_jour }}%
+
 mode: single
+
