@@ -20,6 +20,9 @@ Blueprints Home Assistant pour optimiser l'autoconsommation solaire avec des sys
 
 ### 🌅 Mode Jour (`zendure_mode_jour.yaml`)
 Déclenché à 6h. Passe le manager en mode smart et abaisse le SOC minimum à 10% pour permettre la décharge.
+À l'heure de fin (22h par défaut), passe le manager en arrêt — sauf si l'entité
+optionnelle « Dérogation nuit » (un `input_boolean`, ex. mode vacances) est active :
+le mode jour continue alors toute la nuit pour consommer le solaire stocké.
 
 ### 🌇 SOC Réserve Soir (`zendure_soc_reserve_soir.yaml`)
 Déclenché au coucher du soleil. Calcule dynamiquement le SOC à conserver pour couvrir le lendemain matin, basé sur :
@@ -57,6 +60,7 @@ Chaque blueprint est configurable via l'interface HA. Les principales valeurs :
 | SOC plancher | 10 % | Protection batterie, ne jamais descendre en dessous |
 | SOC réserve max | 45 % | Plafond de réserve même en hiver |
 | Couleurs Tempo | Blanc, Rouge | Jours où la charge nocturne est autorisée |
+| Dérogation nuit | (aucune) | `input_boolean` optionnel : actif → pas d'arrêt en fin de journée |
 
 ## Prérequis
 
