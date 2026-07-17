@@ -47,6 +47,17 @@ blueprint:
       default: "22:00:00"
       selector:
         time: {}
+    derogation_nuit:
+      name: Dérogation nuit (optionnel)
+      description: >
+        Entité input_boolean : quand elle est active, le passage en arrêt de
+        fin de journée est sauté et le mode jour continue toute la nuit
+        (ex. mode vacances, pour consommer le solaire stocké la nuit).
+      default: ""
+      selector:
+        entity:
+          domain:
+            - input_boolean
     soc_min_jour:
       name: SOC minimum journée (%)
       description: SOC plancher pendant la journée (protection batterie)
@@ -76,10 +87,14 @@ actions:
   - variables:
       operation_mode: !input operation_mode
       soc_min_jour: !input soc_min_jour
+      derogation_nuit: !input derogation_nuit
   - choose:
       - conditions:
           - condition: trigger
             id: "stop"
+          - condition: template
+            value_template: >
+              {{ not derogation_nuit or is_state(derogation_nuit, 'off') }}
         sequence:
           - action: select.select_option
             target:
@@ -90,6 +105,14 @@ actions:
             data:
               name: Zendure Mode Jour
               message: "Mode arrêt activé (fin de journée)"
+      - conditions:
+          - condition: trigger
+            id: "stop"
+        sequence:
+          - action: logbook.log
+            data:
+              name: Zendure Mode Jour
+              message: "Fin de journée sautée (dérogation nuit active)"
       - conditions:
           - condition: trigger
             id: "start"
