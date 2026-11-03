@@ -5,9 +5,10 @@
 Blueprints Home Assistant publics :
 
 - Zendure SolarFlow (SF800 Plus, SF2400 AC Pro) avec optimisation tarifaire Tempo EDF (l'essentiel de ce fichier) ;
-- poussoir mural sur Sonoff ZBMINIR2 (Zigbee2MQTT) : appui simple / double / long. Instances
-  dans `home-assistant` (automatisations « Interrupteur - … »), détails terrain dans
-  `home-assistant/CLAUDE.md` (section poussoirs).
+- poussoir mural sur Sonoff ZBMINIR2 (Zigbee2MQTT) : appui simple / double / long.
+
+Repo **public** : rien de propre à l'installation (noms de pièces, IP, domaines, chemins de la
+config perso) dans les blueprints, la doc ou ce fichier.
 
 ## Contexte matériel
 
@@ -45,8 +46,8 @@ blueprints/
   poussoir_sonoff_zbminir2/poussoir_sonoff_zbminir2.yaml             # Poussoir ZBMINIR2 : simple/double/long
 ```
 
-Déploiement : copier le YAML dans `/config/blueprints/automation/defts/` sur la VM HA
-(par `scp`, voir `home-assistant`), puis recharger les automatisations. La branche par défaut est
+Déploiement : copier le YAML dans `/config/blueprints/automation/defts/`, puis recharger les
+automatisations. La branche par défaut est
 `master` (les URL d'import et `source_url` doivent pointer dessus).
 
 Chaque blueprint est indépendant et réutilisable. Les entités SolarFlow sont sélectionnées via des target selectors (N SolarFlow supportés).
