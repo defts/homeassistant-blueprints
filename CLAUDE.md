@@ -2,7 +2,12 @@
 
 ## Projet
 
-Blueprints Home Assistant pour piloter des systèmes Zendure SolarFlow (SF800 Plus, SF2400 AC Pro) avec optimisation tarifaire Tempo EDF.
+Blueprints Home Assistant publics :
+
+- Zendure SolarFlow (SF800 Plus, SF2400 AC Pro) avec optimisation tarifaire Tempo EDF (l'essentiel de ce fichier) ;
+- poussoir mural sur Sonoff ZBMINIR2 (Zigbee2MQTT) : appui simple / double / long. Instances
+  dans `home-assistant` (automatisations « Interrupteur - … »), détails terrain dans
+  `home-assistant/CLAUDE.md` (section poussoirs).
 
 ## Contexte matériel
 
@@ -37,7 +42,12 @@ blueprints/
   zendure_mode_jour/zendure_mode_jour.yaml                           # Mode smart + SOC min jour
   zendure_soc_reserve_soir/zendure_soc_reserve_soir.yaml             # Calcul SOC réserve au sunset
   zendure_charge_nocturne_tempo/zendure_charge_nocturne_tempo.yaml       # Charge nocturne Tempo
+  poussoir_sonoff_zbminir2/poussoir_sonoff_zbminir2.yaml             # Poussoir ZBMINIR2 : simple/double/long
 ```
+
+Déploiement : copier le YAML dans `/config/blueprints/automation/defts/` sur la VM HA
+(par `scp`, voir `home-assistant`), puis recharger les automatisations. La branche par défaut est
+`master` (les URL d'import et `source_url` doivent pointer dessus).
 
 Chaque blueprint est indépendant et réutilisable. Les entités SolarFlow sont sélectionnées via des target selectors (N SolarFlow supportés).
 
@@ -49,7 +59,9 @@ Chaque blueprint est indépendant et réutilisable. Les entités SolarFlow sont 
 - **Valeurs par défaut** : Fournies pour tous les paramètres numériques
 - **Sécurité batterie** : SOC plancher à 10% minimum (jamais vider complètement)
 - **Fallbacks** : Les templates Jinja2 utilisent `| float(valeur_par_defaut)` pour éviter les erreurs si un sensor est indisponible
-- **Mode** : `mode: single` sur tous les blueprints (pas d'exécution parallèle)
+- **Mode** : `mode: single` sur les blueprints Zendure (pas d'exécution parallèle) ;
+  `mode: queued` pour les boutons (aucun appui perdu)
+- **Commits publics** : pas d'attribution IA (ni Co-Authored-By, ni « Generated with »)
 
 ## Entités Home Assistant utilisées
 

@@ -1,0 +1,87 @@
+blueprint:
+  name: Sonoff ZBMINIR2 - Poussoir (simple, double, long)
+  description: >
+    Associe une action à chacun des trois gestes d'un poussoir branché sur un
+    Sonoff ZBMINIR2 (Zigbee2MQTT) : appui simple, double appui et appui long.
+    Pratique avec des ampoules connectées, le relais restant toujours fermé.
+
+
+    Prérequis côté Zigbee2MQTT : firmware 1.1.0 ou plus, `detach_relay_mode`
+    activé et `external_trigger_mode` sur `pulse`. En `edge` (interrupteur
+    classique), seul l'appui simple est remonté. Les déclencheurs « double »
+    et « long » n'apparaissent dans Home Assistant qu'après le premier
+    événement de chaque type.
+
+
+    L'appui long part pendant le maintien, au bout de 2 à 3 s environ. Le
+    firmware n'envoie rien au relâchement, ni en continuant à maintenir.
+  domain: automation
+  source_url: https://github.com/defts/homeassistant-blueprints/blob/master/blueprints/poussoir_sonoff_zbminir2/poussoir_sonoff_zbminir2.yaml
+  input:
+    module:
+      name: Module ZBMINIR2
+      description: Le module Sonoff ZBMINIR2 sur lequel le poussoir est branché.
+      selector:
+        device:
+          filter:
+            - integration: mqtt
+              manufacturer: SONOFF
+              model_id: ZBMINIR2
+    appui_simple:
+      name: Appui simple
+      description: Actions d'un appui court (en général, basculer la lumière).
+      default: []
+      selector:
+        action: {}
+    double_appui:
+      name: Double appui
+      description: Actions d'un double appui rapide.
+      default: []
+      selector:
+        action: {}
+    appui_long:
+      name: Appui long
+      description: Actions d'un appui maintenu 2 à 3 s.
+      default: []
+      selector:
+        action: {}
+
+triggers:
+  - trigger: device
+    domain: mqtt
+    device_id: !input module
+    type: action
+    subtype: toggle
+    id: appui_simple
+  - trigger: device
+    domain: mqtt
+    device_id: !input module
+    type: action
+    subtype: double_click
+    id: double_appui
+  - trigger: device
+    domain: mqtt
+    device_id: !input module
+    type: action
+    subtype: long_press
+    id: appui_long
+
+actions:
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: appui_simple
+        sequence: !input appui_simple
+      - conditions:
+          - condition: trigger
+            id: double_appui
+        sequence: !input double_appui
+      - conditions:
+          - condition: trigger
+            id: appui_long
+        sequence: !input appui_long
+
+# File d'attente : aucun appui n'est perdu, même si une action dure un peu.
+mode: queued
+max: 10
+max_exceeded: silent

@@ -1,6 +1,11 @@
-# Home Assistant Blueprints — Zendure SolarFlow
+# Home Assistant Blueprints
 
-Blueprints Home Assistant pour optimiser l'autoconsommation solaire avec des systèmes Zendure SolarFlow et le tarif EDF Tempo.
+Blueprints Home Assistant :
+
+- **Zendure SolarFlow** : optimiser l'autoconsommation solaire avec le tarif EDF Tempo (ci-dessous).
+- **Sonoff ZBMINIR2** : trois gestes (simple, double, long) sur un poussoir mural, voir [plus bas](#sonoff-zbminir2).
+
+# Zendure SolarFlow
 
 ## Principe
 
@@ -67,6 +72,55 @@ Chaque blueprint est configurable via l'interface HA. Les principales valeurs :
 - [Intégration Zendure](https://github.com/Zendure/ha-zendure) configurée
 - [Intégration RTE Tempo](https://github.com/hekmon/rtetempo) pour le capteur couleur
 - Intégration `sun` (native HA)
+
+# Sonoff ZBMINIR2
+
+## 🔘 Poussoir Sonoff ZBMINIR2 (`poussoir_sonoff_zbminir2.yaml`)
+
+Associe une action à chacun des trois gestes d'un poussoir branché sur un
+[Sonoff ZBMINIR2](https://www.zigbee2mqtt.io/devices/ZBMINIR2.html) en relais
+détaché : **appui simple**, **double appui** et **appui long**. Idéal avec des
+ampoules connectées : le relais reste fermé, le poussoir ne fait qu'envoyer des
+gestes à Home Assistant.
+
+Import :
+
+```
+https://github.com/defts/homeassistant-blueprints/blob/master/blueprints/poussoir_sonoff_zbminir2/poussoir_sonoff_zbminir2.yaml
+```
+
+| Entrée | Description |
+|--------|-------------|
+| Module ZBMINIR2 | Le module (seuls les ZBMINIR2 sont proposés) |
+| Appui simple | Actions d'un appui court, en général basculer la lumière |
+| Double appui | Actions d'un double appui rapide (facultatif) |
+| Appui long | Actions d'un appui maintenu 2 à 3 s (facultatif) |
+
+### Prérequis
+
+- Zigbee2MQTT, module en firmware **1.1.0 ou plus** (c'est lui qui remonte le
+  double appui et l'appui long).
+- `detach_relay_mode` activé (relais détaché).
+- `external_trigger_mode` sur **`pulse`** pour un poussoir. En `edge`
+  (interrupteur classique), seul l'appui simple est remonté.
+- Les déclencheurs « double » et « long » n'apparaissent dans Home Assistant
+  qu'après le premier événement de chaque type : faire un double appui et un
+  appui long une fois avant de configurer.
+
+### Bon à savoir
+
+- **L'appui long part pendant le maintien**, au bout de 2 à 3 s (seuil du
+  firmware, non réglable). Relâché avant, l'appui compte comme un appui simple.
+- Le firmware n'envoie **rien au relâchement** ni en continuant à maintenir :
+  pas de variation continue « tant que j'appuie ». Demande en cours :
+  [Koenkk/zigbee2mqtt#33593](https://github.com/Koenkk/zigbee2mqtt/issues/33593).
+- **Va-et-vient** : passer les deux interrupteurs en poussoirs (un interrupteur
+  restant ferait un appui long sans fin). Avec des mécanismes de va-et-vient
+  transformés en poussoirs (ressort), les navettes existantes suffisent : au repos,
+  S1–S2 doit être ouvert ; sinon, croiser les navettes d'un seul des deux mécanismes.
+- Les poussoirs d'un même module envoient les mêmes événements : impossible de
+  savoir lequel a été pressé.
+- `mode: queued` : aucun appui n'est perdu, même si une action dure un peu.
 
 ## Licence
 
