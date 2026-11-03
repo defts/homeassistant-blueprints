@@ -1,4 +1,4 @@
-# CLAUDE.md
+# Blueprints Home Assistant — consignes pour les agents
 
 ## Projet
 
