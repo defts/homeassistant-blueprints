@@ -40,9 +40,9 @@ Déclenché à 22h. Charge tous les SolarFlow à puissance max en heures creuses
 Dans Home Assistant → Paramètres → Automatisations → Blueprints → Importer :
 
 ```
-https://github.com/defts/homeassistant-blueprints/blob/main/blueprints/zendure_mode_jour/zendure_mode_jour.yaml
-https://github.com/defts/homeassistant-blueprints/blob/main/blueprints/zendure_soc_reserve_soir/zendure_soc_reserve_soir.yaml
-https://github.com/defts/homeassistant-blueprints/blob/main/blueprints/zendure_charge_nocturne_tempo/zendure_charge_nocturne_tempo.yaml
+https://github.com/defts/homeassistant-blueprints/blob/master/blueprints/zendure_mode_jour/zendure_mode_jour.yaml
+https://github.com/defts/homeassistant-blueprints/blob/master/blueprints/zendure_soc_reserve_soir/zendure_soc_reserve_soir.yaml
+https://github.com/defts/homeassistant-blueprints/blob/master/blueprints/zendure_charge_nocturne_tempo/zendure_charge_nocturne_tempo.yaml
 ```
 
 ### Manuel
