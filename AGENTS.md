@@ -34,7 +34,10 @@ Le cycle quotidien est découpé en 4 phases :
 3. **Journée (soleil→sunset)** — Mode smart, stockage du surplus solaire
 4. **Soir (sunset→22h)** — Décharge jusqu'au SOC réserve calculé pour le lendemain
 
-Le "SOC réserve" est dynamique : il se base sur `sun.sun` (lever du soleil) et la capacité batterie réelle (`sensor.zendure_manager_total_kwh`) pour calculer combien de % garder pour couvrir le matin suivant.
+Le "SOC réserve" est dynamique : il se base sur `sun.sun` (lever du soleil) et la capacité batterie réelle (`sensor.zendure_manager_total_kwh`) pour calculer combien de % garder pour couvrir le matin suivant. Il est plafonné, SolarFlow par
+SolarFlow, à la charge actuelle (capteur `device_class: battery` du même appareil) : un SOC
+minimum au-dessus de la charge fait recharger le SolarFlow sur le réseau pour l'atteindre, en
+heures pleines si c'est au coucher du soleil en hiver.
 
 ## Structure du repo
 

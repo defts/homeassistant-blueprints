@@ -5,11 +5,16 @@ blueprint:
     la consommation du lendemain matin (6h → production solaire effective).
     S'adapte automatiquement aux saisons via sun.sun et à la capacité
     réelle des batteries via le capteur Zendure Manager.
+    La réserve ne dépasse jamais la charge actuelle de chaque SolarFlow :
+    elle arrête la décharge, sans jamais recharger sur le réseau en heures
+    pleines.
   domain: automation
   input:
     soc_min_targets:
       name: SOC minimum SolarFlow
-      description: Sélectionner les entités SOC minimum de tous vos SolarFlow
+      description: >
+        Sélectionner les entités SOC minimum de tous vos SolarFlow. La charge
+        de chacun est lue sur son capteur de batterie (même appareil).
       selector:
         target:
           entity:
@@ -87,6 +92,7 @@ conditions:
   - condition: sun
     after: sunset
 variables:
+  soc_targets: !input soc_min_targets
   consumption: !input avg_consumption
   capacity_sensor: !input total_capacity_sensor
   morning_hour: !input morning_start_hour
@@ -111,15 +117,45 @@ actions:
           {% set soc = needed + floor_soc %}
           {{ [[soc, floor_soc] | max, ceiling_soc] | min }}
         {% endif %}
-  - action: number.set_value
-    target: !input soc_min_targets
-    data:
-      value: "{{ calculated_soc }}"
-  - action: logbook.log
-    data:
-      name: Zendure SOC Réserve
-      message: >
-        SOC réserve calculé à {{ calculated_soc }}%
-        (capacité: {{ states(capacity_sensor) }} kWh,
-        sunrise demain: {{ sunrise_raw | as_datetime | as_local | as_timestamp | timestamp_custom('%H:%M') if sunrise_raw else 'inconnu' }})
+      # Entités SOC minimum ciblées (entités, ou appareils SolarFlow).
+      soc_entities: >
+        {% set ns = namespace(l=[]) %}
+        {% set ids = soc_targets.entity_id if soc_targets.entity_id is defined else [] %}
+        {% set ns.l = [ids] if ids is string else ids | list %}
+        {% set devs = soc_targets.device_id if soc_targets.device_id is defined else [] %}
+        {% for d in ([devs] if devs is string else devs) %}
+          {% set ns.l = ns.l + (device_entities(d) | select('match', 'number[.].*min_soc$') | list) %}
+        {% endfor %}
+        {{ ns.l | unique | list }}
+  # Une réserve au-dessus de la charge actuelle fait recharger le SolarFlow sur
+  # le réseau pour l'atteindre : on la plafonne à la charge de chacun.
+  - repeat:
+      for_each: "{{ soc_entities }}"
+      sequence:
+        - variables:
+            battery_sensor: >
+              {{ device_entities(device_id(repeat.item)) | select('match', 'sensor[.]')
+                 | select('is_state_attr', 'device_class', 'battery') | first | default('') }}
+            current_soc: >
+              {{ states(battery_sensor) | float(-1) if battery_sensor else -1 }}
+            reserve_soc: >
+              {% if current_soc | float < 0 %}
+                {{ floor_soc | int }}
+              {% else %}
+                {{ [[calculated_soc | int, current_soc | int] | min, floor_soc | int] | max }}
+              {% endif %}
+        - action: number.set_value
+          target:
+            entity_id: "{{ repeat.item }}"
+          data:
+            value: "{{ reserve_soc }}"
+        - action: logbook.log
+          data:
+            name: Zendure SOC Réserve
+            entity_id: "{{ repeat.item }}"
+            message: >
+              SOC réserve {{ reserve_soc }}% (calculé {{ calculated_soc }}%,
+              charge actuelle {{ current_soc | int if current_soc | float >= 0 else 'inconnue' }}%,
+              capacité {{ states(capacity_sensor) }} kWh,
+              sunrise demain {{ sunrise_raw | as_datetime | as_local | as_timestamp | timestamp_custom('%H:%M') if sunrise_raw else 'inconnu' }})
 mode: single

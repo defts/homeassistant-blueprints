@@ -20,6 +20,7 @@ Blueprints Home Assistant :
 - **Matin** : décharge pour couvrir les heures pleines jusqu'au soleil
 - **Journée** : mode smart, le surplus solaire recharge les batteries
 - **Soir** : décharge jusqu'au SOC de réserve calculé pour le lendemain matin
+  (jamais de recharge sur le réseau pour l'atteindre)
 
 ## Blueprints
 
@@ -34,6 +35,15 @@ Déclenché au coucher du soleil. Calcule dynamiquement le SOC à conserver pour
 - L'heure du lever du soleil (`sun.sun`)
 - La capacité totale des batteries (`sensor.zendure_manager_total_kwh`)
 - La consommation moyenne estimée
+
+La réserve appliquée à chaque SolarFlow est plafonnée à sa charge actuelle (lue sur son
+capteur de batterie) : un SOC minimum au-dessus de la charge le ferait recharger sur le
+réseau, en heures pleines, pour l'atteindre. Batterie déjà sous la réserve calculée → elle
+s'arrête simplement de décharger.
+
+Avec une charge nocturne quotidienne, la batterie est de toute façon pleine au matin : la
+réserve n'apporte alors rien et garde de l'énergie inutilisée pendant les heures pleines du
+soir. À n'activer que les nuits sans charge.
 
 ### 🔋 Charge Nocturne Tempo (`zendure_charge_nocturne_tempo.yaml`)
 Déclenché à 22h. Charge tous les SolarFlow à puissance max en heures creuses si le lendemain est Blanc ou Rouge.
